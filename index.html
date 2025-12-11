@@ -19,8 +19,6 @@
       position: absolute;
       width: 80px;
       height: 80px;
-      border-radius: 50%;
-      overflow: hidden;
     }
   </style>
 </head>
@@ -67,7 +65,7 @@
           class="dobble-image"
           :style="calculatePosition(position)"
         >
-          <img :src="uploadedImages[index]" alt="Image Dobble" class="w-full h-full object-cover" />
+          <img :src="uploadedImages[index]" alt="Image Dobble" class="w-full h-full" />
         </div>
       </div>
     </div>
