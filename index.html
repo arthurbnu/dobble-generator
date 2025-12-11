@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Générateur de carte Dobble</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .dobble-card {
+      position: relative;
+      border-radius: 50%;
+      background: white;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      aspect-ratio: 1;
+    }
+    .dobble-image {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div id="app" class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">Générateur de carte Dobble</h1>
+
+    <!-- Upload d'images -->
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">Ajoutez vos images (max 10)</h2>
+      <input
+        type="file"
+        @change="handleFileUpload"
+        accept="image/*"
+        multiple
+        class="block w-full text-sm text-gray-500
+          file:mr-4 file:py-2 file:px-4
+          file:rounded-md file:border-0
+          file:text-sm file:font-semibold
+          file:bg-blue-50 file:text-blue-700
+          hover:file:bg-blue-100"
+      />
+      <p class="text-sm text-gray-500 mt-2">
+        {{ uploadedImages.length }}/10 images uploadées
+      </p>
+      
+      <!-- Sélecteur d'échelle -->
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-2">Échelle de la carte (en cm)</label>
+        <select v-model.number="cardScale" class="block w-full px-3 py-2 border border-gray-300 rounded-md">
+          <option value="5">5 cm</option>
+          <option value="7.5">7.5 cm</option>
+          <option value="10">10 cm</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Aperçu de la carte Dobble -->
+    <div class="flex justify-center mb-6">
+      <div class="dobble-card" :style="{ width: cardScale * 40 + 'px', height: cardScale * 40 + 'px' }">
+        <div
+          v-for="(index, position) in (shuffledIndices.length > 0 ? shuffledIndices : Array.from({length: uploadedImages.length}, (_, i) => i))"
+          :key="position"
+          class="dobble-image"
+          :style="calculatePosition(position)"
+        >
+          <img :src="uploadedImages[index]" alt="Image Dobble" class="w-full h-full object-cover" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="flex justify-center gap-4">
+      <button
+        @click="regenerateCard"
+        :disabled="uploadedImages.length < 2"
+        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+      >
+        Régénérer la carte
+      </button>
+      <button
+        @click="downloadCard"
+        :disabled="uploadedImages.length < 2"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+      >
+        Télécharger la carte
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref } = Vue;
+
+    createApp({
+      setup() {
+        const uploadedImages = ref([]);
+        const cardScale = ref(10); // Valeur par défaut: 10 cm
+        const shuffledIndices = ref([]);
+
+        const shuffleImages = () => {
+          // Créer un tableau d'indices
+          const indices = Array.from({ length: uploadedImages.value.length }, (_, i) => i);
+          // Mélanger avec l'algorithme Fisher-Yates
+          for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+          }
+          shuffledIndices.value = indices;
+        };
+
+        const handleFileUpload = (event) => {
+          const files = Array.from(event.target.files);
+          if (uploadedImages.value.length + files.length > 10) {
+            alert("Maximum 10 images autorisées.");
+            return;
+          }
+          files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              uploadedImages.value.push(e.target.result);
+              shuffleImages();
+            };
+            reader.readAsDataURL(file);
+          });
+        };
+
+        const calculatePosition = (index) => {
+          const totalImages = uploadedImages.value.length;
+          const cardSize = cardScale.value * 40; // Conversion cm en pixels (1cm = 40px)
+          const imageSize = cardSize * 0.25; // 25% de la taille de la carte
+          let angle, radius, x, y;
+          
+          // Si on a 1 image, la mettre au centre
+          if (totalImages === 1) {
+            x = cardSize / 2 - imageSize / 2;
+            y = cardSize / 2 - imageSize / 2;
+          }
+          // Pour 2+ images : 1 au centre, les autres en cercle
+          else {
+            if (index === 0) {
+              // Image au centre
+              x = cardSize / 2 - imageSize / 2;
+              y = cardSize / 2 - imageSize / 2;
+            } else {
+              // Images en cercle, plus proches du bord
+              const indexEnCercle = index - 1;
+              const imagesEnCercle = totalImages - 1;
+              angle = (indexEnCercle / imagesEnCercle) * 2 * Math.PI;
+              radius = cardSize * 0.35; // Rapproché du bord (0.35 au lieu de 0.275)
+              x = cardSize / 2 + radius * Math.cos(angle) - imageSize / 2;
+              y = cardSize / 2 + radius * Math.sin(angle) - imageSize / 2;
+            }
+          }
+          
+          // Rotation aléatoire entre 0 et 360 degrés
+          const rotation = Math.random() * 360;
+          
+          // Variation de taille entre 60 et 100%
+          const scale = 0.6 + Math.random() * 0.4;
+          
+          return {
+            left: `${x}px`,
+            top: `${y}px`,
+            width: `${imageSize}px`,
+            height: `${imageSize}px`,
+            transform: `rotate(${rotation}deg) scale(${scale})`,
+            transformOrigin: 'center center',
+          };
+        };
+
+        const regenerateCard = () => {
+          // Mélanger l'ordre des images et forcer Vue à recalculer les positions
+          shuffleImages();
+          uploadedImages.value = [...uploadedImages.value];
+        };
+
+        const downloadCard = () => {
+          const DPI = 300; // 300 DPI pour une bonne qualité d'impression
+          const cardSize = cardScale.value * DPI / 2.54; // Conversion cm en pixels @ 300 DPI
+          const imageSize = cardSize * 0.25; // 25% de la taille de la carte
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = cardSize;
+          canvas.height = cardSize;
+          const ctx = canvas.getContext('2d');
+
+          // Fond blanc circulaire
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(cardSize / 2, cardSize / 2, cardSize / 2, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          // Créer un masque circulaire pour les images
+          ctx.beginPath();
+          ctx.arc(cardSize / 2, cardSize / 2, cardSize / 2, 0, 2 * Math.PI);
+          ctx.clip();
+
+          // Ajout des images
+          const imageElements = [];
+          const indicesToUse = shuffledIndices.value.length > 0 ? shuffledIndices.value : Array.from({ length: uploadedImages.value.length }, (_, i) => i);
+          
+          indicesToUse.forEach((imgIndex, position) => {
+            const img = uploadedImages.value[imgIndex];
+            const imgEl = new Image();
+            imgEl.src = img;
+            imgEl.onload = () => {
+              const totalImages = uploadedImages.value.length;
+              let x, y, angle, radius;
+              
+              // Même logique de positionnement
+              if (totalImages === 1) {
+                x = cardSize / 2;
+                y = cardSize / 2;
+              } else {
+                if (position === 0) {
+                  x = cardSize / 2;
+                  y = cardSize / 2;
+                } else {
+                  const indexEnCercle = position - 1;
+                  const imagesEnCercle = totalImages - 1;
+                  angle = (indexEnCercle / imagesEnCercle) * 2 * Math.PI;
+                  radius = cardSize * 0.35; // Rapproché du bord
+                  x = cardSize / 2 + radius * Math.cos(angle);
+                  y = cardSize / 2 + radius * Math.sin(angle);
+                }
+              }
+              
+              // Rotation aléatoire entre 0 et 360 degrés
+              const rotation = Math.random() * 360 * (Math.PI / 180);
+              
+              // Variation de taille entre 60 et 100%
+              const scale = 0.6 + Math.random() * 0.4;
+              
+              ctx.save();
+              ctx.translate(x, y);
+              ctx.rotate(rotation);
+              ctx.scale(scale, scale);
+              ctx.drawImage(imgEl, -imageSize / 2, -imageSize / 2, imageSize, imageSize);
+              ctx.restore();
+              
+              imageElements.push(position);
+              
+              if (imageElements.length === uploadedImages.value.length) {
+                const link = document.createElement('a');
+                link.download = `dobble-card-${cardScale.value}cm.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+              }
+            };
+          });
+        };
+
+        return {
+          uploadedImages,
+          cardScale,
+          shuffledIndices,
+          handleFileUpload,
+          calculatePosition,
+          shuffleImages,
+          regenerateCard,
+          downloadCard,
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
