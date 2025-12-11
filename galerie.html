@@ -294,7 +294,9 @@ const text2 = `
 85 : {4,18,26,37,42,50,61,66,83,85}
 86 : {5,19,22,34,45,48,60,71,83,86}
 87 : {6,12,25,35,41,54,58,73,83,87}
-88 : {7,14,28,30,40,51,62,72,83,88}`
+88 : {7,14,28,30,40,51,62,72,83,88}
+89 : {8,15,21,36,43,49,64,68,83,89}
+90 : {9,17,24,31,39,55,59,70,83,90}`
 
 
 const combinations = text2.trim().split('\n').map(line => {
@@ -310,7 +312,9 @@ const combinations = text2.trim().split('\n').map(line => {
 
 
         const uploadedImages = ref([]);
-        const cardScale = ref(10); // Valeur par défaut: 10 cm
+        // Détecter si on est sur mobile ou desktop et définir la taille par défaut
+        const isMobile = window.innerWidth <= 768;
+        const cardScale = ref(isMobile ? 5 : 15); // 5 cm sur mobile, 15 cm sur desktop
         const shuffledIndices = ref([]);
         const enableRotations = ref(true); // Activer les rotations par défaut
         
