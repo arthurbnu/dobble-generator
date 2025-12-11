@@ -54,6 +54,12 @@
           <option value="10">10 cm</option>
         </select>
       </div>
+
+      <!-- Checkbox pour les rotations -->
+      <div class="mt-4 flex items-center">
+        <input type="checkbox" v-model="enableRotations" id="enableRotations" class="w-4 h-4">
+        <label for="enableRotations" class="ml-2 text-sm font-medium">Activer les rotations aléatoires</label>
+      </div>
     </div>
 
     <!-- Aperçu de la carte Dobble -->
@@ -90,13 +96,20 @@
   </div>
 
   <script>
-    const { createApp, ref } = Vue;
+    const { createApp, ref, watch } = Vue;
 
     createApp({
       setup() {
         const uploadedImages = ref([]);
         const cardScale = ref(10); // Valeur par défaut: 10 cm
         const shuffledIndices = ref([]);
+        const enableRotations = ref(true); // Activer les rotations par défaut
+
+        // Watcher pour forcer la recalculation quand on change les rotations
+        watch(enableRotations, () => {
+          // Forcer Vue à recalculer les positions
+          uploadedImages.value = [...uploadedImages.value];
+        });
 
         const shuffleImages = () => {
           // Créer un tableau d'indices
@@ -153,8 +166,8 @@
             }
           }
           
-          // Rotation aléatoire entre 0 et 360 degrés
-          const rotation = Math.random() * 360;
+          // Rotation aléatoire entre 0 et 360 degrés (ou 0 si désactivée)
+          const rotation = enableRotations.value ? Math.random() * 360 : 0;
           
           // Variation de taille entre 60 et 100%
           const scale = 0.6 + Math.random() * 0.4;
@@ -226,8 +239,8 @@
                 }
               }
               
-              // Rotation aléatoire entre 0 et 360 degrés
-              const rotation = Math.random() * 360 * (Math.PI / 180);
+              // Rotation aléatoire entre 0 et 360 degrés (ou 0 si désactivée)
+              const rotation = enableRotations.value ? Math.random() * 360 * (Math.PI / 180) : 0;
               
               // Variation de taille entre 60 et 100%
               const scale = 0.6 + Math.random() * 0.4;
@@ -255,6 +268,7 @@
           uploadedImages,
           cardScale,
           shuffledIndices,
+          enableRotations,
           handleFileUpload,
           calculatePosition,
           shuffleImages,
